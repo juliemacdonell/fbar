@@ -1,0 +1,3 @@
+prettytable
+pyyaml
+ynab==0.0.3
