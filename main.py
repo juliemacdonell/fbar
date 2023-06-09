@@ -24,7 +24,7 @@ import ynab
 
 TODAY = datetime.date.today()
 
-with open('config.yml') as f:
+with open("config.yml") as f:
     CONFIG = yaml.load(f, Loader=yaml.FullLoader)
 
 
@@ -40,12 +40,11 @@ def get_api(api: str):
         API instance
     """
     configuration = ynab.Configuration(
-        api_key=dict(Authorization=CONFIG['ynab']['token']),
-        api_key_prefix=dict(Authorization='Bearer')
+        api_key=dict(Authorization=CONFIG["ynab"]["token"]),
+        api_key_prefix=dict(Authorization="Bearer"),
     )
     return operator.methodcaller(
-        f'{api.capitalize()}Api',
-        ynab.ApiClient(configuration)
+        f"{api.capitalize()}Api", ynab.ApiClient(configuration)
     )(ynab)
 
 
@@ -53,12 +52,14 @@ def handle_exception(func: typing.Callable) -> typing.Callable:
     """
     Decorator to handle YNAB API exceptions.
     """
+
     def wrapper(*args):
-        """ Inner """
+        """Inner"""
         try:
             return func(*args)
         except ynab.rest.ApiException as e:
-            print(f'Exception when calling YNAB API: %f\n')
+            print(f"Exception when calling YNAB API: %f\n")
+
     return wrapper
 
 
@@ -66,11 +67,11 @@ def handle_exception(func: typing.Callable) -> typing.Callable:
 def get_budgets():
     """
     Get budgets.
-    
+
     Returns:
         List of budgets
     """
-    budgets_api = get_api('budgets')
+    budgets_api = get_api("budgets")
     return budgets_api.get_budgets().data.budgets
 
 
@@ -81,11 +82,11 @@ def get_accounts(budget_id: str):
 
     Parameters:
         budget_id: Budget ID
-    
+
     Returns:
         List of accounts
     """
-    accounts_api = get_api('accounts')
+    accounts_api = get_api("accounts")
     return accounts_api.get_accounts(budget_id).data.accounts
 
 
@@ -93,19 +94,19 @@ def get_accounts(budget_id: str):
 def get_transactions(budget_id: str, account_id: str):
     """
     Get transactions.
-    
+
     Parameters:
         budget_id: Budget ID
         account_id: Account ID
-    
+
     Returns:
         List of transactions
     """
-    transactions_api = get_api('transactions')
+    transactions_api = get_api("transactions")
     return transactions_api.get_transactions_by_account(
         budget_id,
         account_id,
-        since_date=f"{CONFIG['year']}-01-01"
+        since_date=f"{CONFIG['year'] - 1}-01-01",  # Ensures all transactions
     ).data.transactions
 
 
@@ -125,72 +126,76 @@ def main():
 
     # Add transactions to accounts.
     for account in accounts:
-        account['transactions'] = sorted([
-            transaction.to_dict() for transaction in
-            get_transactions(account['budget_id'], account['id'])
-            if transaction.cleared in ('cleared', 'reconciled')
-        ], key=operator.itemgetter('date'), reverse=True)
+        account["transactions"] = sorted(
+            [
+                transaction.to_dict()
+                for transaction in get_transactions(account["budget_id"], account["id"])
+                if transaction.cleared in ("cleared", "reconciled")
+            ],
+            key=operator.itemgetter("date"),
+            reverse=True,
+        )
 
     # Calculate max balance for each account.
     for account in accounts:
-        current_balance = account['cleared_balance']
-        max_balance = None
-        for idx, transaction in enumerate(account['transactions']):
-            # Initialize max balance to last balance of the year.
-            if transaction['date'].year == CONFIG['year'] \
-                    and max_balance is None:
-                max_balance = dict(
-                    balance=current_balance, 
-                    start=transaction['date'],
-                    end=datetime.date(CONFIG['year'], 12, 31),
-                )
-            
-            # Set current balance to max if greater than existing max.
-            current_balance -= transaction['amount']
-            if transaction['date'].year == CONFIG['year'] \
-                    and current_balance > max_balance['balance']:
-                try:
-                    start = account['transactions'][idx + 1]['date']
-                except IndexError:
-                    start = datetime.date(CONFIG['year'], 1, 1)
+        current_balance = account["cleared_balance"]
+        max_balance = dict(
+            balance=current_balance,
+            start=account["transactions"][-1]["date"]
+            if account["transactions"]
+            else datetime.date(2000, 1, 1),
+            end=datetime.date.today(),
+        )
+        for idx, transaction in enumerate(account["transactions"]):
+            print(transaction)
+            try:
+                start = account["transactions"][idx + 1]["date"]
+            except IndexError:
+                start = account["transactions"][idx]["date"]
 
+            current_balance -= transaction["amount"]
+
+            if transaction["date"].year > CONFIG["year"] or (
+                transaction["date"].year == CONFIG["year"]
+                and current_balance > max_balance["balance"]
+            ):
                 max_balance = dict(
-                    balance=current_balance, 
+                    balance=current_balance,
                     start=start,
-                    end=transaction['date'],
+                    end=transaction["date"],
                 )
-            
-        account['max_balance'] = max_balance
+
+        account["max_balance"] = max_balance
 
     table = prettytable.PrettyTable(
-        ['Name', 'Max Balance EUR', 'Max Balance USD', 'Start Date', 'End Date']
+        ["Name", "Max Balance EUR", "Max Balance USD", "Start Date", "End Date"]
     )
     for account in accounts:
-        if account['max_balance']:
-            eur_max_balance = round(
-                account['max_balance']['balance'] / 1000, 2
-            )
+        if account["max_balance"]:
+            eur_max_balance = round(account["max_balance"]["balance"] / 1000, 2)
             usd_max_balance = round(
-                eur_max_balance / CONFIG['currency']['usd_to_eur'], 2
+                eur_max_balance / CONFIG["currency"]["usd_to_eur"], 2
             )
-            start_date = account['max_balance']['start']
-            end_date = account['max_balance']['end']
+            start_date = account["max_balance"]["start"]
+            end_date = account["max_balance"]["end"]
         else:
             eur_max_balance = 0.00
             usd_max_balance = 0.00
-            start_date = datetime.date(CONFIG['year'], 1, 1)
-            end_date = datetime.date(CONFIG['year'], 12, 31)
-        
-        table.add_row([
-            account['name'], 
-            f'€{eur_max_balance}', 
-            f'${usd_max_balance}', 
-            start_date, 
-            end_date,
-        ])
+            start_date = datetime.date(CONFIG["year"], 1, 1)
+            end_date = datetime.date(CONFIG["year"], 12, 31)
+
+        table.add_row(
+            [
+                account["name"],
+                f"€{eur_max_balance}",
+                f"${usd_max_balance}",
+                start_date,
+                end_date,
+            ]
+        )
 
     print(table)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
