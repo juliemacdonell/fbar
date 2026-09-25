@@ -1,3 +1,0 @@
-prettytable
-pyyaml
-ynab==4.4.0

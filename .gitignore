@@ -1,2 +1,5 @@
 .idea/*
 config.yml
+.venv/
+__pycache__/
+*.egg-info/

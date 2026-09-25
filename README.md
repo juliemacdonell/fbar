@@ -15,11 +15,11 @@ The Foreign Bank Account Report (FBAR) is form that must be filed by all US citi
    relevant year and [currency conversion rate](https://www.irs.gov/individuals/international-taxpayers/yearly-average-currency-exchange-rates).
 3. Install dependencies:
 ```
-pip install -r requirements.txt
+uv sync
 ```
 4. Run main script:
 ```
-python main.py
+uv run fbar
 ```
 A report, like the one below, will be generated.
 
