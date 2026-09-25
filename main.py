@@ -40,8 +40,7 @@ def get_api(api: str):
         API instance
     """
     configuration = ynab.Configuration(
-        api_key=dict(Authorization=CONFIG["ynab"]["token"]),
-        api_key_prefix=dict(Authorization="Bearer"),
+        access_token=CONFIG["ynab"]["token"],
     )
     return operator.methodcaller(
         f"{api.capitalize()}Api", ynab.ApiClient(configuration)
@@ -66,13 +65,13 @@ def handle_exception(func: typing.Callable) -> typing.Callable:
 @handle_exception
 def get_budgets():
     """
-    Get budgets.
+    Get plans.
 
     Returns:
-        List of budgets
+        List of plans
     """
-    budgets_api = get_api("budgets")
-    return budgets_api.get_budgets().data.budgets
+    plans_api = get_api("plans")
+    return plans_api.get_plans().data.plans
 
 
 @handle_exception

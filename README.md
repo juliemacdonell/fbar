@@ -6,7 +6,7 @@ The Foreign Bank Account Report (FBAR) is form that must be filed by all US citi
 
 * prettytable
 * pyyaml
-* ynab==0.0.3
+* ynab==4.4.0
 
 ## Usage
 
